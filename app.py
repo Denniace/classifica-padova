@@ -39,9 +39,9 @@ def carica_dati():
             return dati_aggiornati
     else:
         return {
-            "Dalla Zita (Panini)": {"voti": 15, "indirizzo": "Via Gorizia, 12"},
-            "Caffè Pedrocchi (Storico)": {"voti": 12, "indirizzo": "Via VIII Febbraio, 15"},
-            "Pizzeria Pago Pago": {"voti": 9, "indirizzo": "Via Galileo Galilei, 59"}
+            "Dalla Zita (Panini)": {"voti": 5, "indirizzo": "Via Gorizia, 12"},
+            "Caffè Pedrocchi (Storico)": {"voti": 4, "indirizzo": "Via VIII Febbraio, 15"},
+            "Pizzeria Pago Pago": {"voti": 4, "indirizzo": "Via Galileo Galilei, 59"}
         }
 
 def salva_dati(dati):
@@ -60,7 +60,7 @@ def assegna_categoria(nome):
 # --- CONFIGURAZIONE INTERFACCIA ---
 st.set_page_config(page_title="Il Re di Padova", page_icon="🍔", layout="wide")
 
-cookie_manager = stx.get_cookie_manager()
+cookie_manager = stx.CookieManager()
 voto_salvato = cookie_manager.get(cookie="ha_votato_padova")
 
 if 'locali' not in st.session_state:
