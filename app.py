@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import os
+import extra_streamlit_components as stx
 
 # Nome del file in cui salveremo i dati
 FILE_DATI = "locali_padova.json"
@@ -39,18 +40,23 @@ def assegna_categoria(nome):
         return "☕ Caffè & Storici"
     return "✨ Altro"
 
-# --- INIZIO APPLICAZIONE STREAMLIT ---
+# --- CONFIGURAZIONE INTERFACCIA ---
 st.set_page_config(page_title="Il Re di Padova", page_icon="🍔", layout="wide")
 
-st.title("🍔 Il Re di Padova - Classifica Locali")
-st.write("Vota i tuoi posti preferiti, filtra per categoria e stravolgi la classifica!")
+# Inizializziamo il gestore dei cookie del browser
+cookie_manager = stx.get_cookie_manager()
 
-# Inizializziamo la sessione caricando i dati dal file
+# Proviamo a leggere se esiste già il cookie del voto nel browser dell'utente
+voto_salvato = cookie_manager.get(cookie="ha_votato_padova")
+
+# Inizializziamo la sessione caricando i dati dal file JSON
 if 'locali' not in st.session_state:
     st.session_state.locali = carica_dati()
 
-# Inizializziamo il controllo del voto nel browser dell'utente
-if 'ha_votato' not in st.session_state:
+# Se il browser ha il cookie salvato, blocchiamo il voto, altrimenti lo lasciamo libero
+if voto_salvato == "true":
+    st.session_state.ha_votato = True
+elif 'ha_votato' not in st.session_state:
     st.session_state.ha_votato = False
 
 # Trasformiamo i dati in un DataFrame e assegniamo le categorie
@@ -58,18 +64,18 @@ df = pd.DataFrame(list(st.session_state.locali.items()), columns=['Locale', 'Vot
 df['Categoria'] = df['Locale'].apply(assegna_categoria)
 df = df.sort_values(by='Voti', ascending=False).reset_index(drop=True)
 
+st.title("🍔 Il Re di Padova - Classifica Locali")
+st.write("Vota i tuoi posti preferiti, filtra per categoria e stravolgi la classifica ufficiale!")
 
-# --- NUOVA SEZIONE: FILTRO PER CATEGORIA ---
+# --- SEZIONE: FILTRO PER CATEGORIA ---
 st.subheader("📂 Esplora le Categorie")
 categorie_disponibili = ["🌍 Tutti i Locali", "🥪 Panini & Snack", "🍕 Pizza & Kebab", "🍷 Osterie & Bacari", "🍦 Gelaterie", "☕ Caffè & Storici", "✨ Altro"]
 categoria_selezionata = st.selectbox("Cosa ti va di mangiare oggi?", categorie_disponibili)
 
-# Filtriamo il DataFrame in base alla scelta dell'utente
 if categoria_selezionata != "🌍 Tutti i Locali":
     df_visualizzato = df[df['Categoria'] == categoria_selezionata].reset_index(drop=True)
 else:
     df_visualizzato = df
-
 
 # --- SEZIONE: IL PODIO VISIVO (TOP 3 FILTRATO) ---
 st.write("")
@@ -90,8 +96,7 @@ else:
 
 st.markdown("---")
 
-
-# --- TABELLA COLORATA ---
+# --- TABELLA CLASSIFICA ---
 st.subheader("📊 Classifica")
 
 def evidenzia_podio(row):
@@ -107,7 +112,6 @@ if num_locali > 0:
     df_stilizzato = df_visualizzato.style.apply(evidenzia_podio, axis=1)
     st.dataframe(df_stilizzato, use_container_width=True)
 
-
 # --- SEZIONE: AGGIUNGI UN LOCALE ---
 st.subheader("➕ Non vedi il tuo posto preferito? Aggiungilo!")
 
@@ -118,7 +122,6 @@ with st.form("nuovo_locale_form", clear_on_submit=True):
 
     if bottone_aggiungi:
         if nuovo_nome.strip() != "":
-            # Creiamo il nome includendo il tipo scelto per aiutare la funzione di auto-categoria
             nome_completo = f"{nuovo_nome.strip()} ({scelta_tipo})"
             if nome_completo not in st.session_state.locali:
                 st.session_state.locali[nome_completo] = 1
@@ -130,18 +133,21 @@ with st.form("nuovo_locale_form", clear_on_submit=True):
         else:
             st.error("Inserisci un nome valido.")
 
-
 # --- SEZIONE: CASSETTA DELLE VOTAZIONI ---
 st.subheader("🗳️ Dai il tuo voto!")
-# Facciamo votare solo partendo dai locali visibili nella categoria selezionata per comodità
 opzione_scelta = st.selectbox("Quale locale vuoi supportare?", df_visualizzato['Locale'] if num_locali > 0 else df['Locale'])
 
 if st.button(f"Regala un voto a: {opzione_scelta}"):
     if st.session_state.ha_votato:
-        st.error("🚫 Hai già dato un voto in questa sessione!")
+        st.error("🚫 Hai già dato un voto! Il sistema ha memorizzato il blocco sul tuo dispositivo.")
     else:
+        # Incrementiamo il voto nel file JSON
         st.session_state.locali[opzione_scelta] += 1
         salva_dati(st.session_state.locali)
+        
+        # Attiviamo il blocco temporaneo e salviamo il cookie fisso nel browser
         st.session_state.ha_votato = True
+        cookie_manager.set(cookie="ha_votato_padova", val="true", key="salva_blocco_permanente")
+        
         st.success(f"Grazie! Il tuo voto per {opzione_scelta} è stato registrato!")
         st.rerun()
