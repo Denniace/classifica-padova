@@ -1,15 +1,54 @@
 {
-    "Dalla Zita (Panini)": 1,
-    "Caffè Pedrocchi (Storico)": 1,
-    "Pizzeria Pago Pago": 1,
-    "Gelateria GROM": 1,
-    "MEZE TURKISH KEBAB GRILL (Chiesanuova)": 1,
-    "Vicoli (Via Umberto I)": 1,
-    "Osteria l'Anfora": 1,
-    "Osteria dal Capo": 1,
-    "Enoteca Ristorante dei Tadi": 1,
-    "SO' RIVÁ - Ristorantino": 1,
-    "Bacaro Padovano": 1,
-    "La Folperia": 1,
-    "Gelateria Romana": 1
+    "Dalla Zita (Panini)": {
+        "voti": 6,
+        "indirizzo": "Via Gorizia, 12"
+    },
+    "Caffè Pedrocchi (Storico)": {
+        "voti": 5,
+        "indirizzo": "Via VIII Febbraio, 15"
+    },
+    "Pizzeria Pago Pago": {
+        "voti": 4,
+        "indirizzo": "Via Galileo Galilei, 59"
+    },
+    "Gelateria GROM": {
+        "voti": 3,
+        "indirizzo": "Via Roma, 101"
+    },
+    "Vicoli (Via Umberto I)": {
+        "voti": 2,
+        "indirizzo": "Via Umberto I, 95"
+    },
+    "MEZE TURKISH KEBAB GRILL (Chiesanuova)": {
+        "voti": 1,
+        "indirizzo": "Via Chiesanuova, 73"
+    },
+    "Osteria l'Anfora": {
+        "voti": 1,
+        "indirizzo": "Via Soncin, 13"
+    },
+    "Osteria dal Capo": {
+        "voti": 1,
+        "indirizzo": "Via degli Obizzi, 2"
+    },
+    "Enoteca Ristorante dei Tadi": {
+        "voti": 1,
+        "indirizzo": "Via dei Tadi, 15"
+    },
+    "SO' RIVÁ - Ristorantino": {
+        "voti": 1,
+        "indirizzo": "Passaggio Corner Piscopia, 20"
+    },
+    "Bacaro Padovano": {
+        "voti": 1,
+        "indirizzo": "Via San Gregorio Barbarigo, 3"
+    },
+    "La Folperia": {
+        "voti": 1,
+        "indirizzo": "Piazza della Frutta, 1"
+    },
+    "Gelateria Romana": {
+        "voti": 1,
+        "indirizzo": "Corso Milano, 34"
+    }
 }
