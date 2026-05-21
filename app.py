@@ -1,167 +1,144 @@
 import streamlit as st
-import pandas as pd
+import extra_streamlit_components as stx
 import json
 import os
-import extra_streamlit_components as stx
-from geopy.geocoders import Nominatim
+import pandas as pd
+import time
 
-FILE_DATI = "locali_padova.json"
+# Impostazione della pagina Streamlit
+st.set_page_config(page_title="Classifica Locali Padova", page_icon="🍕", layout="wide")
 
-# --- FUNZIONE MAGICA: CERCA L'INDIRIZZO ONLINE ---
-def trova_indirizzo(nome_locale):
-    # Diciamo alle mappe chi siamo per non farsi bloccare
-    geolocator = Nominatim(user_agent="padova_app_classifica_re")
-    try:
-        # Cerchiamo il locale aggiungendo "Padova" per aiutare il motore di ricerca
-        location = geolocator.geocode(f"{nome_locale}, Padova, Italia")
-        if location:
-            # OpenStreetMap restituisce indirizzi lunghissimi. Prendiamo solo la via principale.
-            parti_indirizzo = location.address.split(",")
-            indirizzo_breve = f"{parti_indirizzo[0].strip()}, {parti_indirizzo[1].strip()}" if len(parti_indirizzo) > 1 else location.address
-            return indirizzo_breve
-        else:
-            return "📍 Indirizzo non trovato (Cerca su Google)"
-    except:
-        return "📍 Errore di connessione alle mappe"
-
-# --- FUNZIONI DI SALVATAGGIO ---
-def carica_dati():
-    if os.path.exists(FILE_DATI):
-        with open(FILE_DATI, "r", encoding="utf-8") as f:
-            dati_grezzi = json.load(f)
-            # Sistema di sicurezza: se il JSON è vecchio (solo voti), lo aggiorniamo al nuovo formato
-            dati_aggiornati = {}
-            for locale, valore in dati_grezzi.items():
-                if isinstance(valore, int): 
-                    dati_aggiornati[locale] = {"voti": valore, "indirizzo": "📍 Sconosciuto (Vecchio dato)"}
-                else:
-                    dati_aggiornati[locale] = valore
-            return dati_aggiornati
-    else:
-        return {
-            "Dalla Zita (Panini)": {"voti": 5, "indirizzo": "Via Gorizia, 12"},
-            "Caffè Pedrocchi (Storico)": {"voti": 4, "indirizzo": "Via VIII Febbraio, 15"},
-            "Pizzeria Pago Pago": {"voti": 4, "indirizzo": "Via Galileo Galilei, 59"}
-        }
-
-def salva_dati(dati):
-    with open(FILE_DATI, "w", encoding="utf-8") as f:
-        json.dump(dati, f, indent=4, ensure_ascii=False)
-
-def assegna_categoria(nome):
-    nome_lower = nome.lower()
-    if "panini" in nome_lower or "zita" in nome_lower or "snack" in nome_lower: return "🥪 Panini & Snack"
-    elif "pizzeria" in nome_lower or "pizza" in nome_lower or "kebab" in nome_lower or "meze" in nome_lower: return "🍕 Pizza & Kebab"
-    elif "osteria" in nome_lower or "bacaro" in nome_lower or "folperia" in nome_lower: return "🍷 Osterie & Bacari"
-    elif "gelateria" in nome_lower or "gelato" in nome_lower: return "🍦 Gelaterie"
-    elif "caffè" in nome_lower or "bar" in nome_lower: return "☕ Caffè & Storici"
-    return "✨ Altro"
-
-# --- CONFIGURAZIONE INTERFACCIA ---
-st.set_page_config(page_title="Il Re di Padova", page_icon="🍔", layout="wide")
-
+# Inizializzazione del Cookie Manager
 cookie_manager = stx.CookieManager()
-voto_salvato = cookie_manager.get(cookie="ha_votato_padova")
 
-if 'locali' not in st.session_state:
-    st.session_state.locali = carica_dati()
+# SIFONE ANTI-RACE: Blocca l'app finché i cookie dal browser non sono stati letti del tutto
+if 'cookies_caricati' not in st.session_state:
+    time.sleep(0.6)  # Pausa strategica di 600ms per attendere il browser
+    st.session_state['cookies_caricati'] = True
+    st.rerun()
 
-if voto_salvato == "true":
-    st.session_state.ha_votato = True
-elif 'ha_votato' not in st.session_state:
-    st.session_state.ha_votato = False
+# Database di emergenza interno per garantire che indirizzi e categorie si vedano SEMPRE correttamente
+INFO_LOCALI = {
+    "Dalla Zita (Panini)": {"indirizzo": "Via Gorizia, 12", "categoria": "🥪 Panini & Snack"},
+    "Caffè Pedrocchi (Storico)": {"indirizzo": "Via VIII Febbraio, 15", "categoria": "☕ Caffè & Storici"},
+    "Pizzeria Pago Pago": {"indirizzo": "Via Galileo Galilei, 59", "categoria": "🍕 Pizza & Kebab"},
+    "Gelateria GROM": {"indirizzo": "Via Roma, 101", "categoria": "🍦 Gelaterie"},
+    "Vicoli (Via Umberto I)": {"indirizzo": "Via Umberto I, 95", "categoria": "✨ Altro"},
+    "MEZE TURKISH KEBAB GRILL (Chiesanuova)": {"indirizzo": "Via Chiesanuova, 73", "categoria": "🍕 Pizza & Kebab"},
+    "Osteria l'Anfora": {"indirizzo": "Via Soncin, 13", "categoria": "🍷 Osterie & Ristoranti"},
+    "Osteria dal Capo": {"indirizzo": "Via degli Obizzi, 2", "categoria": "🍷 Osterie & Ristoranti"},
+    "Enoteca Ristorante dei Tadi": {"indirizzo": "Via dei Tadi, 15", "categoria": "🍷 Osterie & Ristoranti"},
+    "SO' RIVÁ - Ristorantino": {"indirizzo": "Passaggio Corner Piscopia, 20", "categoria": "🍷 Osterie & Ristoranti"},
+    "Bacaro Padovano": {"indirizzo": "Via San Gregorio Barbarigo, 3", "categoria": "🍷 Osterie & Ristoranti"},
+    "La Folperia": {"indirizzo": "Piazza della Frutta, 1", "categoria": "🐙 Street Food & Pesce"},
+    "Gelateria Romana": {"indirizzo": "Corso Milano, 34", "categoria": "🍦 Gelaterie"}
+}
 
-# Creiamo la tabella includendo il nuovo campo indirizzo
-lista_per_tabella = []
-for nome, info in st.session_state.locali.items():
-    lista_per_tabella.append({
-        "Locale": nome, 
-        "Voti": info["voti"], 
-        "Indirizzo": info.get("indirizzo", "📍 Sconosciuto"),
-        "Categoria": assegna_categoria(nome)
+# Funzioni di lettura e scrittura sicura del file JSON
+def carica_locali():
+    if os.path.exists("Locali_padova.json"):
+        try:
+            with open("Locali_padova.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def salva_locali(dati):
+    with open("Locali_padova.json", "w", encoding="utf-8") as f:
+        json.dump(dati, f, ensure_ascii=False, indent=4)
+
+# Carica i dati dal file JSON su GitHub
+dati_json = carica_locali()
+
+# Costruiamo la lista pulita decodificando la struttura del file JSON
+lista_classifica = []
+for locale, info in dati_json.items():
+    # Se il dato è già un dizionario strutturato estrae i valori, altrimenti usa il database interno
+    if isinstance(info, dict):
+        voti = info.get("voti", 1)
+        indirizzo = info.get("indirizzo", INFO_LOCALI.get(locale, {}).get("indirizzo", "📍 Sconosciuto"))
+        categoria = info.get("categoria", INFO_LOCALI.get(locale, {}).get("categoria", "✨ Altro"))
+    else:
+        voti = info
+        indirizzo = INFO_LOCALI.get(locale, {}).get("indirizzo", "📍 Sconosciuto")
+        categoria = INFO_LOCALI.get(locale, {}).get("categoria", "✨ Altro")
+    
+    lista_classifica.append({
+        "Locale": locale,
+        "Voti": voti,
+        "Indirizzo": indirizzo,
+        "Categoria": categoria
     })
 
-df = pd.DataFrame(lista_per_tabella)
-df = df.sort_values(by='Voti', ascending=False).reset_index(drop=True)
+# Se il file JSON era vuoto o corrotto, lo ripopola automaticamente da zero
+if not lista_classifica:
+    for locale, info in INFO_LOCALI.items():
+        lista_classifica.append({
+            "Locale": locale,
+            "Voti": 1,
+            "Indirizzo": info["indirizzo"],
+            "Categoria": info["categoria"]
+        })
+        dati_json[locale] = {"voti": 1, "indirizzo": info["indirizzo"], "categoria": info["categoria"]}
+    salva_locali(dati_json)
 
-st.title("🍔 Il Re di Padova")
-st.write("Vota i tuoi posti preferiti e scopri dove si trovano!")
+# Crea il DataFrame pandas e ordina per numero di voti dal più alto al più basso
+df = pd.DataFrame(lista_classifica)
+df = df.sort_values(by="Voti", ascending=False).reset_index(drop=True)
 
-# --- SEZIONE: FILTRO PER CATEGORIA ---
-st.subheader("📂 Esplora le Categorie")
-categorie_disponibili = ["🌍 Tutti i Locali", "🥪 Panini & Snack", "🍕 Pizza & Kebab", "🍷 Osterie & Bacari", "🍦 Gelaterie", "☕ Caffè & Storici", "✨ Altro"]
-categoria_selezionata = st.selectbox("Cosa cerchi oggi?", categorie_disponibili)
+# --- INTERFACCIA UTENTE ---
+st.title("📊 Classifica e Posizioni dei Locali di Padova")
 
-if categoria_selezionata != "🌍 Tutti i Locali":
-    df_visualizzato = df[df['Categoria'] == categoria_selezionata].reset_index(drop=True)
+# Sezione del Podio Dinamico
+col1, col2, col3 = st.columns(3)
+if len(df) >= 1:
+    col1.metric("🥇 1° Posto", df.iloc[0]["Locale"], f"{df.iloc[0]['Voti']} voti")
+if len(df) >= 2:
+    col2.metric("🥈 2° Posto", df.iloc[1]["Locale"], f"{df.iloc[1]['Voti']} voti")
+if len(df) >= 3:
+    col3.metric("🥉 3° Posto", df.iloc[2]["Locale"], f"{df.iloc[2]['Voti']} voti")
+
+st.write("---")
+
+# Visualizzazione della tabella dati principale
+st.subheader("📋 Classifica Completa")
+st.dataframe(df, use_container_width=True)
+
+st.write("---")
+st.subheader("🗳️ Vota il tuo locale preferito")
+
+# Controllo effettivo dello stato del Cookie salvato nel browser
+ha_votato = cookie_manager.get("ha_votato_padova_v2")
+
+if ha_votato == "true":
+    st.warning("🚫 Hai già espresso il tuo voto da questo dispositivo per oggi! Non puoi votare più volte.")
 else:
-    df_visualizzato = df
-
-st.write("")
-num_locali = len(df_visualizzato)
-
-# --- PODIO ---
-if num_locali > 0:
-    col1, col2, col3 = st.columns(3)
-    with col1: st.metric(label="🥇 1° Posto", value=df_visualizzato.iloc[0]['Locale'], delta=f"{df_visualizzato.iloc[0]['Voti']} voti")
-    if num_locali > 1:
-        with col2: st.metric(label="🥈 2° Posto", value=df_visualizzato.iloc[1]['Locale'], delta=f"{df_visualizzato.iloc[1]['Voti']} voti")
-    if num_locali > 2:
-        with col3: st.metric(label="🥉 3° Posto", value=df_visualizzato.iloc[2]['Locale'], delta=f"{df_visualizzato.iloc[2]['Voti']} voti")
-else:
-    st.info("Non ci sono locali in questa categoria.")
-
-st.markdown("---")
-
-# --- TABELLA CLASSIFICA CON INDIRIZZI ---
-st.subheader("📊 Classifica e Posizioni")
-def evidenzia_podio(row):
-    if row.name == 0: return ['background-color: #ffd700; color: black; font-weight: bold'] * len(row)
-    elif row.name == 1: return ['background-color: #c0c0c0; color: black'] * len(row)
-    elif row.name == 2: return ['background-color: #cd7f32; color: black'] * len(row)
-    return [''] * len(row)
-
-if num_locali > 0:
-    df_stilizzato = df_visualizzato.style.apply(evidenzia_podio, axis=1)
-    st.dataframe(df_stilizzato, use_container_width=True)
-
-# --- SEZIONE: AGGIUNGI UN LOCALE (CON RICERCA AUTO) ---
-st.subheader("➕ Aggiungi un locale (Troviamo noi l'indirizzo!)")
-with st.form("nuovo_locale_form", clear_on_submit=True):
-    nuovo_nome = st.text_input("Nome esatto del locale (es. Pizzeria Da Pino):")
-    scelta_tipo = st.selectbox("Categoria:", ["Panini", "Pizza", "Kebab", "Osteria", "Bacaro", "Gelateria", "Caffè", "Altro"])
-    bottone_aggiungi = st.form_submit_button("Cerca e Aggiungi 🔍")
-
-    if bottone_aggiungi:
-        if nuovo_nome.strip() != "":
-            nome_completo = f"{nuovo_nome.strip()} ({scelta_tipo})"
-            if nome_completo not in st.session_state.locali:
-                with st.spinner('Sto cercando l\'indirizzo online su Padova... 🌍'):
-                    # Chiamiamo la funzione magica
-                    indirizzo_trovato = trova_indirizzo(nuovo_nome.strip())
-                
-                # Salviamo il nuovo locale con 1 voto e l'indirizzo trovato
-                st.session_state.locali[nome_completo] = {"voti": 1, "indirizzo": indirizzo_trovato}
-                salva_dati(st.session_state.locali)
-                
-                st.success(f"🎉 Aggiunto! Abbiamo trovato questo indirizzo: {indirizzo_trovato}")
-                st.rerun()
-            else:
-                st.warning("Questo locale è già presente!")
+    # Form di selezione e invio voto
+    locale_selezionato = st.selectbox("Seleziona il locale dall'elenco:", df["Locale"].tolist())
+    
+    if st.button("Invia il tuo Voto 🗳️"):
+        # Controllo di sicurezza istantaneo per evitare doppie risposte rapide
+        ha_votato_sicurezza = cookie_manager.get("ha_votato_padova_v2")
+        if ha_votato_sicurezza == "true":
+            st.error("Azione bloccata: Rilevato tentativo di voto multiplo.")
         else:
-            st.error("Inserisci un nome valido.")
-
-# --- SEZIONE: CASSETTA DELLE VOTAZIONI ---
-st.subheader("🗳️ Dai il tuo voto!")
-opzione_scelta = st.selectbox("Quale locale vuoi supportare?", df_visualizzato['Locale'] if num_locali > 0 else df['Locale'])
-
-if st.button(f"Regala un voto a: {opzione_scelta}"):
-    if st.session_state.ha_votato:
-        st.error("🚫 Hai già dato un voto! Sistema bloccato.")
-    else:
-        st.session_state.locali[opzione_scelta]["voti"] += 1
-        salva_dati(st.session_state.locali)
-        st.session_state.ha_votato = True
-        cookie_manager.set(cookie="ha_votato_padova", val="true", key="salva_blocco")
-        st.success(f"Voto registrato per {opzione_scelta}!")
-        st.rerun()
+            # Aggiorna il valore numerico dei voti
+            if locale_selezionato in dati_json and isinstance(dati_json[locale_selezionato], dict):
+                dati_json[locale_selezionato]["voti"] += 1
+            else:
+                dati_json[locale_selezionato] = {
+                    "voti": 2,
+                    "indirizzo": INFO_LOCALI.get(locale_selezionato, {}).get("indirizzo", "📍 Sconosciuto"),
+                    "categoria": INFO_LOCALI.get(locale_selezionato, {}).get("categoria", "✨ Altro")
+                }
+            
+            # Scrive le modifiche sul file JSON
+            salva_locali(dati_json)
+            
+            # Genera il cookie permanente sul browser valido per 24 ore (86400 secondi)
+            cookie_manager.set("ha_votato_padova_v2", "true", max_age=86400)
+            
+            st.success(f"🎉 Voto registrato correttamente per: {locale_selezionato}!")
+            time.sleep(1)
+            st.rerun()
