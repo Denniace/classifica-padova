@@ -9,14 +9,28 @@ from geopy.geocoders import Nominatim
 # Configurazione della Pagina
 st.set_page_config(page_title="Il Re di Padova", page_icon="🍕", layout="wide")
 
-# --- FUNZIONE RICERCA AUTOMATICA INDIRIZZO ---
+# --- FUNZIONE RICERCA AUTOMATICA INDIRIZZO (CORRETTA) ---
 def trova_indirizzo_auto(nome_locale):
-    geolocator = Nominatim(user_agent="padova_app_classifica")
+    # Utilizziamo un user_agent univoco per le richieste
+    geolocator = Nominatim(user_agent="padova_king_v6_app")
     try:
-        location = geolocator.geocode(f"{nome_locale}, Padova, Italia")
+        # addressdetails=True permette di estrarre la via esatta senza farsi ingannare dal nome del posto
+        location = geolocator.geocode(f"{nome_locale}, Padova, Italia", addressdetails=True)
         if location:
-            parti = location.address.split(",")
-            return f"{parti[0].strip()}, {parti[1].strip()}"
+            addr = location.raw.get('address', {})
+            # Cerca la strada tra i vari tag possibili delle mappe
+            via = addr.get('road') or addr.get('pedestrian') or addr.get('path') or addr.get('square')
+            civico = addr.get('house_number', '')
+            
+            if via:
+                return f"{via}, {civico}".strip(", ") if civico else via
+            else:
+                # Fallback di sicurezza se la struttura mappa è parziale
+                parti = location.address.split(",")
+                if len(parti) > 2:
+                    return f"{parti[1].strip()}, {parti[2].strip()}"
+                return location.address.split(",")[0].strip()
+                
         return "📍 Indirizzo non trovato (Da aggiungere a mano)"
     except:
         return "📍 Mappa non raggiungibile"
@@ -28,7 +42,7 @@ def carica_dati():
             with open("Locali_padova.json", "r", encoding="utf-8") as f:
                 dati = json.load(f)
                 
-                # AUTO-RIPARAZIONE JSON VECCHIO
+                # Riparazione automatica se rileva vecchi formati nel file JSON
                 for k, v in list(dati.items()):
                     if isinstance(v, (int, float)): 
                         dati[k] = {"voti": int(v), "indirizzo": "📍 Sconosciuto (Vecchio dato)"}
@@ -49,23 +63,25 @@ def assegna_categoria(nome):
     if "gelateria" in n or "gelato" in n or "grom" in n or "romana" in n: return "🍦 Gelaterie"
     return "✨ Altro"
 
-# --- INIZIALIZZAZIONE COOKIE MANAGER E SESSION STATE ---
-cookie_manager = stx.CookieManager()
+# --- GESTIONE DEI COOKIE (SICUREZZA ANTI-REFRESH AGGIORNATA) ---
+cookie_manager = stx.CookieManager(key="cookie_manager_v6")
+cookies = cookie_manager.get_all()
 
-if 'init' not in st.session_state:
-    time.sleep(0.5)
-    st.session_state['init'] = True
-    st.rerun()
+# Se i cookie stanno ancora caricando dal browser, blocca momentaneamente l'esecuzione
+# Questo impedisce il bug del voto duplicato durante il refresh della pagina
+if cookies is None:
+    st.info("🔄 Caricamento della sessione di voto...")
+    st.stop()
 
 if 'locali' not in st.session_state:
     st.session_state.locali = carica_dati()
 
-ha_votato = cookie_manager.get("voto_padova_dispositivo_v5")
+# Recupera in modo sicuro lo stato del voto salvato sul dispositivo
+ha_votato = cookies.get("voto_padova_dispositivo_v6")
 
 # --- PREPARAZIONE DATI PER LA TABELLA ---
 lista_classifica = []
 for locale, info in st.session_state.locali.items():
-    # Prevenzione errori nel caso info sia ancora un numero (vecchio formato)
     if isinstance(info, (int, float)):
         voti = int(info)
         indirizzo = "📍 Sconosciuto (Vecchio dato)"
@@ -111,23 +127,23 @@ with st.form("nuovo_locale", clear_on_submit=True):
     
     if invio and nome_nuovo.strip():
         if nome_nuovo not in st.session_state.locali:
-            # Se l'utente scrive l'indirizzo a mano
+            # Caso 1: Inserimento manuale dell'indirizzo
             if indirizzo_manuale.strip():
                 via = indirizzo_manuale.strip()
-            # Altrimenti cerca in automatico
+            # Caso 2: Ricerca automatica intelligente sulla mappa
             else:
-                with st.spinner("Cerco l'indirizzo sulle mappe di Padova... 🗺️"):
+                with st.spinner("Cerco l'indirizzo esatto sulle mappe di Padova... 🗺️"):
                     via = trova_indirizzo_auto(nome_nuovo)
                     
             st.session_state.locali[nome_nuovo] = {"voti": 1, "indirizzo": via}
             salva_dati(st.session_state.locali)
-            st.success(f"Aggiunto con successo! Indirizzo: {via}")
+            st.success(f"Aggiunto con successo! Indirizzo assegnato: {via}")
             time.sleep(1)
             st.rerun()
         else:
             st.warning("Questo locale è già presente nella lista!")
 
-# --- SEZIONE VOTAZIONE CON BLOCCO DISPOSITIVO ---
+# --- SEZIONE VOTAZIONE PROTETTA ---
 st.write("---")
 st.subheader("🗳️ Dai il tuo voto")
 
@@ -137,12 +153,12 @@ else:
     if not df.empty:
         scelta = st.selectbox("Seleziona il locale che vuoi supportare:", df["Locale"].tolist())
         if st.button("Regala un voto! 🗳️"):
-            # Incrementa il voto
+            # Incrementa il punteggio del locale scelto
             st.session_state.locali[scelta]["voti"] += 1
             salva_dati(st.session_state.locali)
             
-            # Salva il cookie sul browser dell'utente (scade dopo 24 ore)
-            cookie_manager.set("voto_padova_dispositivo_v5", "true", max_age=86400)
+            # Scrive il cookie di blocco sul browser dell'utente valido per 24 ore (86400 secondi)
+            cookie_manager.set("voto_padova_dispositivo_v6", "true", max_age=86400)
             
             st.success(f"🎉 Fantastico! Il tuo voto per '{scelta}' è stato registrato.")
             time.sleep(1)
