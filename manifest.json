@@ -1,0 +1,15 @@
+{
+  "name": "Il Re di Padova",
+  "short_name": "Re di Padova",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E1117",
+  "theme_color": "#0E1117",
+  "icons": [
+    {
+      "src": "icona.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
