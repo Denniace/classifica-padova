@@ -1,16 +1,19 @@
 {
+  "id": "re-di-padova-app",
   "name": "Il Re di Padova",
   "short_name": "Re di Padova",
-  "description": "Classifica dei migliori locali di Padova.",
+  "description": "La classifica ufficiale dei migliori locali di Padova.",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0E1117",
   "theme_color": "#0E1117",
   "icons": [
     {
       "src": "https://raw.githubusercontent.com/Denniace/classifica-padova/main/icona.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
