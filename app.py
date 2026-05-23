@@ -9,9 +9,9 @@ from geopy.geocoders import Nominatim
 # --- CONFIGURAZIONE DELLA PAGINA (Deve essere la prima istruzione) ---
 st.set_page_config(page_title="Il Re di Padova", page_icon="🍕", layout="wide")
 
-# --- INIEZIONE PWA (Aggiunto per l'installazione su mobile) ---
+# --- INIEZIONE PWA ---
 st.markdown("""
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="https://raw.githubusercontent.com/Denniace/classifica-padova/main/manifest.json">
     <meta name="theme-color" content="#0E1117">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
