@@ -12,10 +12,6 @@ st.set_page_config(page_title="Il Re di Padova", page_icon="🍕", layout="wide"
 # --- INIEZIONE PWA ---
 st.markdown("""
     <link rel="manifest" href="https://raw.githubusercontent.com/Denniace/classifica-padova/main/manifest.json">
-    <meta name="theme-color" content="#0E1117">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 """, unsafe_allow_html=True)
 
 # --- INIZIALIZZAZIONE COOKIE MANAGER ---
