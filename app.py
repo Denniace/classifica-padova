@@ -6,8 +6,16 @@ import pandas as pd
 import time
 from geopy.geocoders import Nominatim
 
-# --- CONFIGURAZIONE ---
+# --- CONFIGURAZIONE DELLA PAGINA (Deve essere la prima istruzione) ---
 st.set_page_config(page_title="Il Re di Padova", page_icon="🍕", layout="wide")
+
+# --- INIEZIONE PWA (Aggiunto per l'installazione su mobile) ---
+st.markdown("""
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0E1117">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+""", unsafe_allow_html=True)
 
 # --- INIZIALIZZAZIONE COOKIE MANAGER ---
 cookie_manager = stx.CookieManager(key="gestore_cookie_padova")
