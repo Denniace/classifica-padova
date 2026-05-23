@@ -7,7 +7,11 @@ import time
 from geopy.geocoders import Nominatim
 
 # --- CONFIGURAZIONE DELLA PAGINA ---
-st.set_page_config(page_title="Il Re di Padova", page_icon="🍕", layout="wide")
+st.set_page_config(
+    page_title="Il Re di Padova", 
+    page_icon="https://raw.githubusercontent.com/Denniace/classifica-padova/main/icona.png", 
+    layout="wide"
+)
 
 # --- INIEZIONE PWA ---
 st.markdown("""
